@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+watchfiles
+python-multipart
+google-genai
+qdrant-client
+PyMuPDF
+python-dotenv
+pydantic
