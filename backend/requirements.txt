@@ -2,7 +2,7 @@ fastapi
 uvicorn[standard]
 watchfiles
 python-multipart
-google-genai
+openai
 qdrant-client
 PyMuPDF
 python-dotenv

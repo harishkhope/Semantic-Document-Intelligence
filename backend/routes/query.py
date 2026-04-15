@@ -1,11 +1,11 @@
 from fastapi import APIRouter, HTTPException
-from google import genai
+from openai import OpenAI
 
-from config import GEMINI_API_KEY, LLM_MODEL
+from config import LLM_MODEL, OPENAI_API_KEY
 from models.schemas import QueryRequest, QueryResponse, SourceChunk
 from services import embedder, vector_store
 
-_client = genai.Client(api_key=GEMINI_API_KEY)
+_client = OpenAI(api_key=OPENAI_API_KEY)
 
 router = APIRouter()
 
@@ -49,11 +49,14 @@ def query_documents(request: QueryRequest):
 
     prompt = _build_prompt(request.question, hits)
 
-    response = _client.models.generate_content(
+    response = _client.chat.completions.create(
         model=LLM_MODEL,
-        contents=prompt,
+        messages=[
+            {"role": "system", "content": "You are a helpful assistant."},
+            {"role": "user", "content": prompt},
+        ],
     )
-    answer = response.text
+    answer = response.choices[0].message.content or ""
 
     sources = [
         SourceChunk(

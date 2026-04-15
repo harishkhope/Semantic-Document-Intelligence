@@ -1,8 +1,11 @@
 import os
+import html
 import requests
 import streamlit as st
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
+USER_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "user-avatar.svg")
+ASSISTANT_AVATAR_PATH = os.path.join(os.path.dirname(__file__), "assistant-avatar.svg")
 
 st.set_page_config(
     page_title="Semantic Document Intelligence",
@@ -74,6 +77,11 @@ st.markdown(
         transform: scale(0.97);
     }
 
+    /* Consistent spacing inside each ingested document card */
+    [data-testid="stSidebar"] div[data-testid="stVerticalBlock"] [data-testid="stHorizontalBlock"] {
+        align-items: center;
+    }
+
     [data-testid="stMetric"] {
         border: 1px solid rgba(255, 255, 255, 0.08);
         border-radius: 0.65rem;
@@ -83,12 +91,23 @@ st.markdown(
     [data-testid="stMarkdownContainer"] p {
         line-height: 1.45;
     }
+
+    .doc-title {
+        margin: 0;
+        font-weight: 600;
+        font-size: 1.1rem;
+        line-height: 1.3;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def api_get(path: str):
     try:
@@ -138,6 +157,22 @@ def fetch_collection_info() -> dict:
     data, _ = api_get("/collection/info")
     return data or {}
 
+
+def _truncate_filename(filename: str, max_chars: int = 30) -> str:
+    if len(filename) <= max_chars:
+        return filename
+    name, ext = os.path.splitext(filename)
+    reserved = len(ext) + 1
+    visible = max(8, max_chars - reserved)
+    return f"{name[:visible]}…{ext}"
+
+
+def _chat_avatar(role: str) -> str:
+    if role == "assistant":
+        return ASSISTANT_AVATAR_PATH
+    return USER_AVATAR_PATH
+
+
 # ── session state ─────────────────────────────────────────────────────────────
 
 if "messages" not in st.session_state:
@@ -147,7 +182,7 @@ if "messages" not in st.session_state:
 
 with st.sidebar:
     st.title("🧠 RAG Vector Memory")
-    st.caption("Powered by Qdrant + Gemini")
+    st.caption("Powered by Qdrant + OpenAI")
     st.divider()
 
     # ── upload section ────────────────────────────────────────────────────────
@@ -165,7 +200,13 @@ with st.sidebar:
             with st.spinner("Parsing, chunking and embedding…"):
                 result, err = api_post(
                     "/ingest",
-                    files={"file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)},
+                    files={
+                        "file": (
+                            uploaded_file.name,
+                            uploaded_file.getvalue(),
+                            uploaded_file.type,
+                        )
+                    },
                 )
             if err:
                 st.error(f"Upload failed: {err}")
@@ -189,18 +230,33 @@ with st.sidebar:
     else:
         for doc in documents:
             with st.container(border=True):
-                col1, col2 = st.columns([5, 1], vertical_alignment="center")
-                with col1:
-                    st.markdown(f"**{doc['filename']}**  \n`{doc['chunk_count']} chunks`")
-                with col2:
-                    if st.button("🗑️", key=f"del_{doc['filename']}", help=f"Delete {doc['filename']}"):
+                name_col, action_col = st.columns(
+                    [3, 1], gap="small", vertical_alignment="center"
+                )
+                with name_col:
+                    safe_name = html.escape(doc["filename"])
+                    display_name = html.escape(_truncate_filename(doc["filename"]))
+                    st.markdown(
+                        f"<p class='doc-title' title='{safe_name}'>{display_name}</p>",
+                        unsafe_allow_html=True,
+                    )
+                with action_col:
+                    if st.button(
+                        "🗑️",
+                        key=f"del_{doc['filename']}",
+                        help=f"Delete {doc['filename']}",
+                        use_container_width=False,
+                    ):
                         with st.spinner("Deleting…"):
-                            result, err = api_delete(f"/documents/{requests.utils.quote(doc['filename'])}")
+                            result, err = api_delete(
+                                f"/documents/{requests.utils.quote(doc['filename'])}"
+                            )
                         if err:
                             st.error(f"Delete failed: {err}")
                         else:
                             st.success(f"Deleted {doc['filename']}")
                             st.rerun()
+                st.caption(f"{doc['chunk_count']} chunks")
 
     st.divider()
 
@@ -216,7 +272,9 @@ with st.sidebar:
 # ── main area ─────────────────────────────────────────────────────────────────
 
 st.title("💬 Chat with your Documents")
-st.caption("Ask questions about your ingested files and review retrieval sources with confidence.")
+st.caption(
+    "Ask questions about your ingested files and review retrieval sources with confidence."
+)
 
 col_left, col_right = st.columns([4, 1], vertical_alignment="bottom")
 with col_left:
@@ -238,7 +296,7 @@ st.divider()
 # ── chat history ──────────────────────────────────────────────────────────────
 
 for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
+    with st.chat_message(msg["role"], avatar=_chat_avatar(msg["role"])):
         st.markdown(msg["content"])
 
         if msg["role"] == "assistant" and "sources" in msg:
@@ -260,10 +318,10 @@ for msg in st.session_state.messages:
 
 if prompt := st.chat_input("Ask a question about your documents…"):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=USER_AVATAR_PATH):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=ASSISTANT_AVATAR_PATH):
         with st.spinner("Searching and generating answer…"):
             payload = {
                 "question": prompt,

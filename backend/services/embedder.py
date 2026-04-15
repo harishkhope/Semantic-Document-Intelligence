@@ -1,21 +1,18 @@
 import time
-from google import genai
-from google.genai import types
-from config import GEMINI_API_KEY, EMBEDDING_MODEL, EMBEDDING_DIMENSION
+from openai import OpenAI
+from config import OPENAI_API_KEY, EMBEDDING_MODEL, EMBEDDING_DIMENSION
 
-_client = genai.Client(api_key=GEMINI_API_KEY)
+_client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_embedding(text: str) -> list[float]:
-    response = _client.models.embed_content(
+    response = _client.embeddings.create(
         model=EMBEDDING_MODEL,
-        contents=text,
-        config=types.EmbedContentConfig(
-            task_type="RETRIEVAL_DOCUMENT",
-            output_dimensionality=EMBEDDING_DIMENSION,
-        ),
+        input=text,
+        dimensions=EMBEDDING_DIMENSION,
+        encoding_format="float",
     )
-    return response.embeddings[0].values
+    return response.data[0].embedding
 
 
 def generate_embeddings_batch(texts: list[str]) -> list[list[float]]:
