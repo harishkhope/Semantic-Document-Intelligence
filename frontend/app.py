@@ -10,6 +10,84 @@ st.set_page_config(
     layout="wide",
 )
 
+st.markdown(
+    """
+    <style>
+    :root {
+        --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+    }
+
+    /* Keep content centered and easier to scan on recordings */
+    [data-testid="stAppViewContainer"] [data-testid="block-container"] {
+        max-width: 1100px;
+        padding-top: 1.25rem;
+        padding-bottom: 1rem;
+    }
+
+    [data-testid="stSidebar"] [data-testid="block-container"] {
+        padding-top: 1.1rem;
+        padding-bottom: 1rem;
+    }
+
+    [data-testid="stSidebar"] h1 {
+        margin-bottom: 0.15rem;
+    }
+
+    [data-testid="stSidebar"] h3 {
+        margin-top: 0.3rem;
+        margin-bottom: 0.55rem;
+    }
+
+    [data-testid="stFileUploader"] {
+        margin-bottom: 0.55rem;
+    }
+
+    [data-testid="stHorizontalBlock"] > div {
+        align-self: end;
+    }
+
+    /* Keep document selector clearly clickable */
+    [data-testid="stSelectbox"] [data-baseweb="select"] > div,
+    [data-testid="stSelectbox"] [data-baseweb="select"] input {
+        cursor: pointer !important;
+    }
+
+    div.stButton > button[kind="primary"] {
+        background-color: #16a34a;
+        border-color: #16a34a;
+        height: 2.6rem;
+        border-radius: 0.6rem;
+        transition: transform 160ms var(--ease-out), background-color 160ms var(--ease-out), border-color 160ms var(--ease-out);
+    }
+
+    div.stButton > button[kind="primary"]:hover {
+        background-color: #15803d;
+        border-color: #15803d;
+    }
+
+    div.stButton > button {
+        border-radius: 0.6rem;
+        transition: transform 160ms var(--ease-out);
+    }
+
+    div.stButton > button:active {
+        transform: scale(0.97);
+    }
+
+    [data-testid="stMetric"] {
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 0.65rem;
+        padding: 0.65rem 0.8rem;
+    }
+
+    [data-testid="stMarkdownContainer"] p {
+        line-height: 1.45;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 # ── helpers ──────────────────────────────────────────────────────────────────
 
 def api_get(path: str):
@@ -110,18 +188,19 @@ with st.sidebar:
         st.info("No documents ingested yet.")
     else:
         for doc in documents:
-            col1, col2 = st.columns([3, 1])
-            with col1:
-                st.markdown(f"**{doc['filename']}**  \n`{doc['chunk_count']} chunks`")
-            with col2:
-                if st.button("🗑️", key=f"del_{doc['filename']}", help=f"Delete {doc['filename']}"):
-                    with st.spinner("Deleting…"):
-                        result, err = api_delete(f"/documents/{requests.utils.quote(doc['filename'])}")
-                    if err:
-                        st.error(f"Delete failed: {err}")
-                    else:
-                        st.success(f"Deleted {doc['filename']}")
-                        st.rerun()
+            with st.container(border=True):
+                col1, col2 = st.columns([5, 1], vertical_alignment="center")
+                with col1:
+                    st.markdown(f"**{doc['filename']}**  \n`{doc['chunk_count']} chunks`")
+                with col2:
+                    if st.button("🗑️", key=f"del_{doc['filename']}", help=f"Delete {doc['filename']}"):
+                        with st.spinner("Deleting…"):
+                            result, err = api_delete(f"/documents/{requests.utils.quote(doc['filename'])}")
+                        if err:
+                            st.error(f"Delete failed: {err}")
+                        else:
+                            st.success(f"Deleted {doc['filename']}")
+                            st.rerun()
 
     st.divider()
 
@@ -137,8 +216,9 @@ with st.sidebar:
 # ── main area ─────────────────────────────────────────────────────────────────
 
 st.title("💬 Chat with your Documents")
+st.caption("Ask questions about your ingested files and review retrieval sources with confidence.")
 
-col_left, col_right = st.columns([3, 1])
+col_left, col_right = st.columns([4, 1], vertical_alignment="bottom")
 with col_left:
     documents = fetch_documents()
     doc_names = [d["filename"] for d in documents]
