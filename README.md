@@ -8,12 +8,10 @@ A production-ready RAG (Retrieval Augmented Generation) system that lets you upl
 
 Project demo is included in-repo at `assets/document-intelligence.mp4`.
 
-```html
 <video controls width="100%" preload="metadata">
   <source src="assets/document-intelligence.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
-```
 
 Fallback link: [Watch demo video](assets/document-intelligence.mp4)
 
